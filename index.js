@@ -103,6 +103,10 @@ const resolvers = {
 			try {
 				const options = { year: "numeric", month: "long", day: "numeric" };
 				let dea = new Date(`${args.dateEnd}`).toLocaleDateString().split("/");
+				//dea.setDate(dea.getDate() + 1);
+
+				//let dea = new Date(`${args.dateEnd}`).setDate(dea.getDate() + 1).toLocaleDateString().split("/");
+
 				console.log(`dea is ${dea}`);
 				let de = new Date(`${dea[0]}/${dea[1]}/${dea[2]}`);
 				console.log(`entered ${de.toLocaleDateString("en-GB", options)}`);
@@ -255,5 +259,5 @@ const server = new ApolloServer({
 
 //Launching web server
 server.listen({ port: process.env.PORT || 4000 }).then(({ url }) => {
-	console.log(`🚀 Server ready at ${url}!`);
+	console.log(`🚀 Server ready at ${url}`);
 });

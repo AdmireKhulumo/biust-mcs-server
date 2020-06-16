@@ -80,8 +80,18 @@ const typeDefs = gql`
 		totals: Totals
 	}
 
+	type Station {
+		id: String
+		stationName: String
+	}
+
 	type Query {
-		recordings(station: String!): [Recording]
+		recordings(
+			station: String!
+			dateStart: String
+			dateEnd: String
+		): [Recording]
+		stations: [Station]
 	}
 `;
 
@@ -90,29 +100,91 @@ const resolvers = {
 	//For the base queries
 	Query: {
 		async recordings(parent, args) {
-			const recordings = await db
-				.collection("temperature_recordings")
-				.where("station", "==", `${args.station}`)
-				.get();
+			try {
+				const options = { year: "numeric", month: "long", day: "numeric" };
+				let dea = new Date(`${args.dateEnd}`).toLocaleDateString().split("/");
+				console.log(`dea is ${dea}`);
+				let de = new Date(`${dea[0]}/${dea[1]}/${dea[2]}`);
+				console.log(`entered ${de.toLocaleDateString("en-GB", options)}`);
 
-			let data = [];
-			recordings.docs.map((recording) => {
-				data.push({
-					id: recording.id,
-					candidate: recording.data().candidate,
-					candidateDbId: recording.data().candidateDbId,
-					dateRecorded: recording.data().dateRecorded,
-					direction: recording.data().direction,
-					recordedBy: recording.data().recordedBy,
-					recordedByDbId: recording.data().recordedByDbId,
-					station: recording.data().station,
-					temperature: recording.data().temperature,
-					typeOfCandidate: recording.data().typeOfCandidate,
-					stationTotalRecords: recordings.size
+				const recordings = await db
+					.collection("temperature_recordings")
+					.where("station", "==", `${args.station}`)
+					.where("dateRecorded", ">=", `${args.dateStart}`)
+					.orderBy("dateRecorded", "desc")
+					.get();
+
+				let data = [];
+				recordings.docs.map((recording) => {
+					//console.log(`recorded ${recording.data().dateRecorded}`);
+					dra = recording.data().dateRecorded.slice(0, 11).split("/");
+					//console.log(`dra is ${dra}`);
+					dr = new Date(`${dra[1]}/${dra[0]}/${dra[2]}`);
+					console.log(`recorded ${dr.toLocaleDateString("en-GB", options)}`);
+					//console.log(dr.toLocaleDateString("en-GB", options));
+
+					let lessThan = false;
+
+					if (de.getFullYear() > dr.getFullYear()) {
+						lessThan = true;
+						console.log("year");
+					} else if (
+						de.getFullYear() === dr.getFullYear() &&
+						de.getMonth() > dr.getMonth()
+					) {
+						lessThan = true;
+						console.log("month");
+						console.log(`de month ${de.getMonth()}`);
+						console.log(`dr month ${dr.getMonth()}`);
+					} else if (
+						de.getFullYear() === dr.getFullYear() &&
+						de.getMonth() === dr.getMonth() &&
+						de.getDate() >= dr.getDate()
+					) {
+						lessThan = true;
+						console.log("day");
+					}
+
+					if (lessThan) {
+						data.push({
+							id: recording.id,
+							candidate: recording.data().candidate,
+							candidateDbId: recording.data().candidateDbId,
+							dateRecorded: recording.data().dateRecorded,
+							direction: recording.data().direction,
+							recordedBy: recording.data().recordedBy,
+							recordedByDbId: recording.data().recordedByDbId,
+							station: recording.data().station,
+							temperature: recording.data().temperature,
+							typeOfCandidate: recording.data().typeOfCandidate,
+							stationTotalRecords: recordings.size
+						});
+					}
 				});
-			});
 
-			return data;
+				return data;
+			} catch (error) {
+				throw new ApolloError(error);
+			}
+		},
+		async stations() {
+			try {
+				const stations = await db
+					.collection("stations")
+					.orderBy("stationName")
+					.get();
+
+				let data = [];
+				stations.docs.map((station) => {
+					data.push({
+						id: station.id,
+						stationName: station.data().stationName
+					});
+				});
+				return data;
+			} catch (error) {
+				throw new ApolloError(error);
+			}
 		}
 	},
 
